@@ -57,7 +57,7 @@ def readTextFile():
 
     # build the graph, and represent it as an adjacency list
     g = edgesToDict(connections)
-    #print "\nGraph: ", g
+    print "\nGraph: ", g
 
     # add the neighboring vertices to the node instances
     for item in g:
@@ -70,14 +70,14 @@ def readTextFile():
     cycle = findCycle(graph)
     print "Cycle? ", cycle
 
-    print "TEst: "
+    print "Test DFS: "
     ksjd = DFS(graph)
     print ksjd
 
     shortestPathDAG(graph, 0)
     pid = 4
     while pid:
-        print "parent of "+str(pid)+" is "+str(graph.nodes[pid].pi)+"  the distance to parent is "+str(graph.nodes[pid].d)
+        print "The parent of "+str(pid)+" is "+ str(graph.nodes[pid].pi) +". The distance to parent is "+str(graph.nodes[pid].d)
         pid = graph.nodes[pid].pi
     # print "+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+="
     # for each in graph.nodes:
@@ -193,7 +193,7 @@ def shortestPathDAG(graph, s):
     # for vertexIndex in increasingOrder:
     while increasingOrder:
         vertexIndex = increasingOrder.pop()
-        print "vertexIndex :", vertexIndex
+        #print "vertexIndex :", vertexIndex
         for vIndex in graph.nodes[vertexIndex].neighbors:
             relax(graph, vertexIndex, vIndex)
 
@@ -204,12 +204,12 @@ def initSingleSource(graph, s):
     graph.nodes[s].d = 0
 
 def relax(graph, u, v):
-    print "relax " + str(u)+" to "+str(v)
-    print "distance to u: " + str(graph.nodes[u].d)
+    #print "relax " + str(u)+" to "+str(v)
+    #print "distance to u: " + str(graph.nodes[u].d)
     if graph.nodes[v].d > graph.nodes[u].d + weightsFromCoords(graph.nodes[u],graph.nodes[v]):
         graph.nodes[v].d = graph.nodes[u].d + weightsFromCoords(graph.nodes[u],graph.nodes[v])
         graph.nodes[v].pi = u
-        print "I just set the parent of node "+ str(v)+" to "+str(u)
+        #print "I just set the parent of node "+ str(v)+" to "+str(u)
 
 
 # Function to find the weight of the edges, given the x and y coordinates
