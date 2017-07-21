@@ -11,12 +11,15 @@ class Node:
         self.color = "white"
         self.pi = None
         self.adj = []
+        self.d = None
+        self.f = None
 
 class Graph:
     def __init__(self):
         self.nodes = []
         self.edges = None
         self.weights = None
+        self.time = 0
 
 # Function to read the textFile containing the information about the graph
 def readTextFile():
@@ -67,6 +70,19 @@ def readTextFile():
     cycle = findCycle(graph)
     print "Cycle? ", cycle
 
+    print "TEst: "
+    ksjd = DFS(graph)
+    print ksjd
+
+    shortestPathDAG(graph, 0)
+    pid = 4
+    while pid:
+        print "parent of "+str(pid)+" is "+str(graph.nodes[pid].pi)+"  the distance to parent is "+str(graph.nodes[pid].d)
+        pid = graph.nodes[pid].pi
+    # print "+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+="
+    # for each in graph.nodes:
+    #     print each.id, each.pi
+
     # finds the last section
     secondSectionLength = len(secondSection);
     # print "\nTests: "
@@ -110,11 +126,6 @@ def edgesToDict(edges):
         graphDict[k].append(v)
     return sorted(graphDict.items())
 
-# Function to find the weight of the edges, given the x and y coordinates
-def weightsFromCoords(X1, Y1, X2, Y2):
-    weight = math.sqrt((X1 - X2)^2 + (Y1 - Y2)^2)
-    return weight
-
 # Function to divide the textfile into sections
 def detectSection(file, start):
     section = []
@@ -139,7 +150,6 @@ def findCycle(graph):
 def isCyclic(graph, index, visited, path):
     visited[index] = True
     path[index] = True
-
     for i in graph.nodes[index].neighbors:
         if visited[i] == False:
             if isCyclic(graph, i, visited, path) == True:
@@ -149,5 +159,62 @@ def isCyclic(graph, index, visited, path):
     path[index] = False
     return False
 
+def DFS(graph):
+    for vertex in graph.nodes:
+        vertex.color = "white"
+        vertex.pi = None
+    graph.time = 0
+    stack = []
+    for vertex in graph.nodes:
+        if (vertex.color == "white"):
+            DFSvisit(graph, vertex, stack)
+    return stack
+
+def DFSvisit(graph, u, stack):
+    graph.time = graph.time + 1
+    u.d = graph.time
+    u.color = "gray"
+    for vertexIndex in u.neighbors:
+        if (graph.nodes[vertexIndex].color == "white"):
+            graph.nodes[vertexIndex].pi = u.id
+            DFSvisit(graph, graph.nodes[vertexIndex], stack)
+    u.color = "black"
+    graph.time = graph.time + 1
+    u.f = graph.time
+    stack.append(u.id)
+
+def topologicalSort(graph):
+    order = DFS(graph)
+    return order
+
+def shortestPathDAG(graph, s):
+    increasingOrder = topologicalSort(graph)
+    initSingleSource(graph, s)
+    # for vertexIndex in increasingOrder:
+    while increasingOrder:
+        vertexIndex = increasingOrder.pop()
+        print "vertexIndex :", vertexIndex
+        for vIndex in graph.nodes[vertexIndex].neighbors:
+            relax(graph, vertexIndex, vIndex)
+
+def initSingleSource(graph, s):
+    for vertex in graph.nodes:
+        vertex.d = float("inf")
+        vertex.pi = None
+    graph.nodes[s].d = 0
+
+def relax(graph, u, v):
+    print "relax " + str(u)+" to "+str(v)
+    print "distance to u: " + str(graph.nodes[u].d)
+    if graph.nodes[v].d > graph.nodes[u].d + weightsFromCoords(graph.nodes[u],graph.nodes[v]):
+        graph.nodes[v].d = graph.nodes[u].d + weightsFromCoords(graph.nodes[u],graph.nodes[v])
+        graph.nodes[v].pi = u
+        print "I just set the parent of node "+ str(v)+" to "+str(u)
+
+
+# Function to find the weight of the edges, given the x and y coordinates
+def weightsFromCoords(node1, node2):
+    weight = math.sqrt((node1.x - node2.x)**2 + (node1.y - node2.y)**2)
+    return weight
 
 readTextFile()
