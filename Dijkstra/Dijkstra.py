@@ -1,3 +1,7 @@
+'''
+Carlo Scanelli
+CSCI 3104 - Assignment 7
+'''
 import math
 from collections import defaultdict
 import operator
@@ -30,7 +34,7 @@ def readTextFile():
     # reads first line of file, to extract number of vertices and edges
     firstLine = txtFile.readline()
     vAnde = map(int, firstLine.split())
-    print "\nNumber of vertices: ", vAnde[0]
+    print "Number of vertices: ", vAnde[0]
     print "Number of edges: ", vAnde[1]
 
     # Read the rest of the file
@@ -39,61 +43,65 @@ def readTextFile():
     # Find the first section, which holds the information about the locations
     firstSection = detectSection(lines, 1)
 
-    # Extract ids, x and y coords. Use these info to make an array of nodes.
-    # Sort the array, in case the nodes are not given in order in the txt file.
-    infos = []
-    for i in firstSection:
-        if (i != "\n"):
-            info = i.split()
-            infos.append(info)
-    nodes = buildNodes(infos)
-    nodes.sort(key=operator.attrgetter('id'))
-
     # finds second section, which lists the connections
     firstSectionLength = len(firstSection);
     secondSection = detectSection(lines, firstSectionLength + 1)
 
-    # finds the last section
-    secondSectionLength = len(secondSection);
-    thirdSection = detectSection(lines, secondSectionLength + firstSectionLength + 1)
-    print "Test cases: "
-    for i in thirdSection:
-         print i,
+    # finds the test cases section
+    # secondSectionLength = len(secondSection);
+    # thirdSection = detectSection(lines, secondSectionLength + firstSectionLength + 1)
+    # print "Test cases: "
+    # for i in thirdSection:
+    #      print i,
 
-    # get the connections/edges from the text file
+    # Extract ids, x and y coords. Use these info to make an array of nodes.
+    infos = getVerticesInfo(firstSection)
+
+    # Creates an array of nodes, with respective ids and positions.
+    # Sort the array, in case the nodes are not given in order in the txt file.
+    nodes = buildNodes(infos)
+
+    # gets the connections/edges from the text file, and stores them in a list.
     connections = findEdges(secondSection)
 
-    # build the graph, and represent it as an adjacency list
+    # build the graph from the edges list, and represent it as an adjacency list
     g = edgesToDict(connections)
-    # print "\nGraph: ", g
 
     # add the neighboring vertices to the node instances
     for item in g:
         nodes[int(item[0])].neighbors = map(int, item[1])
 
-    # build the graph
+    # build the graph of node instances
     graph = buildGraph(nodes)
 
-    # print "Test DFS: "
-    finishingTimes = DFS(graph)
-    # print finishingTimes
-
-    # find cycle
+    # determine if the graph is acyclic
     cycle = findCycle(graph)
-    print "Cycle? ", cycle
+    if cycle == True:
+        print "The graph is cyclic."
+    else:
+        print "The graph is acyclic."
 
     source = 0
-    destination = 4
+    destination = 3
+    if source == destination:
+        print "Invalid input."
     if source > vAnde[0]:
-        print "Source too big"
+        print "Source too big."
     if destination > vAnde[0]:
-        print "Destination too big"
+        print "Destination too big."
     else:
         findShortestPath(cycle, graph, source, destination)
 
     txtFile.close() # To free up any system resources taken up by the open file
 
-# creates an array of nodes, with respective ids and positions
+def getVerticesInfo(firstSection):
+    infos = []
+    for i in firstSection:
+        if (i != "\n"):
+            info = i.split()
+            infos.append(info)
+    return infos
+
 def buildNodes(nodesInfo):
     nodes = []
     for i in range(0, len(nodesInfo)):
@@ -102,15 +110,14 @@ def buildNodes(nodesInfo):
         newNode.x = int(nodesInfo[i][1:-1][0])
         newNode.y = int(nodesInfo[i][2])
         nodes.append(newNode)
+    nodes.sort(key=operator.attrgetter('id'))
     return nodes
 
-# function to build the graph of nodes instances
 def buildGraph(nodes):
     newGraph = Graph()
     newGraph.nodes = nodes
     return newGraph
 
-# Function to create a list which stores the connections
 def findEdges(connectionsList):
     connections = []
     for line in connectionsList:
@@ -119,8 +126,6 @@ def findEdges(connectionsList):
             connections.append((parts[0], parts[1]))
     return connections
 
-# Function to convert the list of connections to an adjacency list.
-# This is used to represent the graph.
 def edgesToDict(edges):
     graphDict = defaultdict(list)
     for k, v in edges:
@@ -191,10 +196,8 @@ def topologicalSort(graph):
 def shortestPathDAG(graph, s):
     increasingOrder = topologicalSort(graph)
     initSingleSource(graph, s)
-    # for vertexIndex in increasingOrder:
     while increasingOrder:
         vertexIndex = increasingOrder.pop()
-        #print "vertexIndex :", vertexIndex
         for vIndex in graph.nodes[vertexIndex].neighbors:
             DAGrelax(graph, vertexIndex, vIndex)
 
@@ -298,8 +301,11 @@ def findShortestPath(cycle, graph, source, destination):
         pid = graph.nodes[pid].pi
         path.append(pid)
 
-    print "The total distance of the shortest path is: ", round(distance, 2)
-    print "The sequence of vertices that form the shortest path is: ", list(reversed(path))
+    if len(path) == 1:
+        print "Destination ", destination, " is not reachable by source ", source
+    else:
+        print "The total distance of the shortest path is: ", round(distance, 2)
+        print "The sequence of vertices that form the shortest path is: ", list(reversed(path))
 
 def main():
     readTextFile()
