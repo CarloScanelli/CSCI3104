@@ -1,6 +1,8 @@
 import math
 from collections import defaultdict
 import operator
+import copy
+import sys
 
 class Node:
     def __init__(self):
@@ -10,7 +12,6 @@ class Node:
         self.neighbors = []
         self.color = "white"
         self.pi = None
-        self.adj = []
         self.d = None
         self.f = None
 
@@ -28,7 +29,7 @@ def readTextFile():
 
     # reads first line of file, to extract number of vertices and edges
     firstLine = txtFile.readline()
-    vAnde = firstLine.split()
+    vAnde = map(int, firstLine.split())
     print "\nNumber of vertices: ", vAnde[0]
     print "Number of edges: ", vAnde[1]
 
@@ -52,12 +53,19 @@ def readTextFile():
     firstSectionLength = len(firstSection);
     secondSection = detectSection(lines, firstSectionLength + 1)
 
+    # finds the last section
+    secondSectionLength = len(secondSection);
+    thirdSection = detectSection(lines, secondSectionLength + firstSectionLength + 1)
+    print "Test cases: "
+    for i in thirdSection:
+         print i,
+
     # get the connections/edges from the text file
     connections = findEdges(secondSection)
 
     # build the graph, and represent it as an adjacency list
     g = edgesToDict(connections)
-    print "\nGraph: ", g
+    # print "\nGraph: ", g
 
     # add the neighboring vertices to the node instances
     for item in g:
@@ -66,29 +74,22 @@ def readTextFile():
     # build the graph
     graph = buildGraph(nodes)
 
+    # print "Test DFS: "
+    finishingTimes = DFS(graph)
+    # print finishingTimes
+
     # find cycle
     cycle = findCycle(graph)
     print "Cycle? ", cycle
 
-    print "Test DFS: "
-    ksjd = DFS(graph)
-    print ksjd
-
-    shortestPathDAG(graph, 0)
-    pid = 4
-    while pid:
-        print "The parent of "+str(pid)+" is "+ str(graph.nodes[pid].pi) +". The distance to parent is "+str(graph.nodes[pid].d)
-        pid = graph.nodes[pid].pi
-    # print "+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+="
-    # for each in graph.nodes:
-    #     print each.id, each.pi
-
-    # finds the last section
-    secondSectionLength = len(secondSection);
-    # print "\nTests: "
-    thirdSection = detectSection(lines, secondSectionLength + firstSectionLength + 1)
-    # for i in thirdSection:
-    #     print i,
+    source = 0
+    destination = 4
+    if source > vAnde[0]:
+        print "Source too big"
+    if destination > vAnde[0]:
+        print "Destination too big"
+    else:
+        findShortestPath(cycle, graph, source, destination)
 
     txtFile.close() # To free up any system resources taken up by the open file
 
@@ -195,7 +196,7 @@ def shortestPathDAG(graph, s):
         vertexIndex = increasingOrder.pop()
         #print "vertexIndex :", vertexIndex
         for vIndex in graph.nodes[vertexIndex].neighbors:
-            relax(graph, vertexIndex, vIndex)
+            DAGrelax(graph, vertexIndex, vIndex)
 
 def initSingleSource(graph, s):
     for vertex in graph.nodes:
@@ -203,18 +204,106 @@ def initSingleSource(graph, s):
         vertex.pi = None
     graph.nodes[s].d = 0
 
-def relax(graph, u, v):
-    #print "relax " + str(u)+" to "+str(v)
-    #print "distance to u: " + str(graph.nodes[u].d)
+def DAGrelax(graph, u, v):
     if graph.nodes[v].d > graph.nodes[u].d + weightsFromCoords(graph.nodes[u],graph.nodes[v]):
         graph.nodes[v].d = graph.nodes[u].d + weightsFromCoords(graph.nodes[u],graph.nodes[v])
         graph.nodes[v].pi = u
-        #print "I just set the parent of node "+ str(v)+" to "+str(u)
-
 
 # Function to find the weight of the edges, given the x and y coordinates
 def weightsFromCoords(node1, node2):
-    weight = math.sqrt((node1.x - node2.x)**2 + (node1.y - node2.y)**2)
+    weight = math.sqrt((node2.x - node1.x)**2 + (node2.y - node1.y)**2)
     return weight
 
-readTextFile()
+#Helper functions to determine the left and right child of a node, used in minHeapify.
+def left(i):
+    return 2*i
+def right(i):
+    return 2*i + 1
+
+#Function that restores the min-heap property, which states that the value
+#held by the children needs to be greater than the value held by the parent.
+def minHeapify(A, i):
+    size = len(A)
+    l = left(i)
+    r = right(i)
+    if (l < size and A[l].d < A[i].d):
+        smallest = l
+    else:
+        smallest = i
+    if (r < size and A[r].d < A[smallest].d):
+        smallest = r
+    if (smallest != i):
+        A[i], A[smallest] = A[smallest], A[i]
+        minHeapify(A, smallest)
+    return A
+
+#Function that builds a min-heap from a list
+#It will be used as a priority queue in Dijkstra algorithm.
+def buildMinHeap(A):
+    heapSize = len(A)
+    i = int(math.floor(heapSize/2))
+    while i >= 1:
+        minHeapify(A, i)
+        i = i - 1
+    return A
+
+#It extracts the minimum value in the min-heap.
+def extractMin(A):
+    size = len(A)-1
+    if size < 1:
+        return None
+    minValue = A[1]
+    A[1] = A[-1]
+    del A[-1]
+    minHeapify(A, 1)
+    return minValue
+
+def Dijkstra(graph, s):
+    initSingleSource(graph, s)
+    S = []
+    Q = copy.copy(graph.nodes)
+    paddingNode = Node()
+    paddingNode.id = -1
+    Q.insert(0, paddingNode)
+    Q = buildMinHeap(Q)
+    while len(Q)>1:
+        u = extractMin(Q)
+        S.append(u)
+        for v in u.neighbors:
+            DijkstraRelax(u, graph.nodes[v])
+
+def DijkstraRelax(u, v):
+    if v.d > u.d + weightsFromCoords(u,v):
+        v.d = u.d + weightsFromCoords(u,v)
+        v.pi = u.id
+
+#Call DAG if the graph is acyclic, Dijkstra otherwise
+def findShortestPath(cycle, graph, source, destination):
+    print "The source vertex is: ", source
+    print "The destination vertex is: ", destination
+    if cycle == True:
+        Dijkstra(graph, source)
+    else:
+        shortestPathDAG(graph, source)
+
+    pid = destination
+    distance = 0
+    path = []
+    path.append(destination)
+    while pid:
+        if graph.nodes[pid].pi == None:
+            break
+        #print "The parent of ", pid, " is ", graph.nodes[pid].pi, ". The distance to parent is ", round(graph.nodes[pid].d, 2)
+        distance = distance + graph.nodes[pid].d
+        pid = graph.nodes[pid].pi
+        path.append(pid)
+
+    print "The total distance of the shortest path is: ", round(distance, 2)
+    print "The sequence of vertices that form the shortest path is: ", list(reversed(path))
+
+def main():
+    readTextFile()
+
+
+if __name__ == "__main__":
+    main()
