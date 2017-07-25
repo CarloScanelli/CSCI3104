@@ -7,6 +7,10 @@ from collections import defaultdict
 import operator
 import copy
 import sys
+import timeit
+import matplotlib.pyplot as plt
+import pylab as p
+import numpy as np
 
 class Node:
     def __init__(self):
@@ -29,6 +33,7 @@ class Graph:
 # Function to read the textFile containing the information about the graph
 def readTextFile():
     # open the textfile
+    #txtFile = open("bigTest.txt","r")
     txtFile = open("smallTest.txt","r")
 
     # reads first line of file, to extract number of vertices and edges
@@ -46,13 +51,6 @@ def readTextFile():
     # finds second section, which lists the connections
     firstSectionLength = len(firstSection);
     secondSection = detectSection(lines, firstSectionLength + 1)
-
-    # finds the test cases section
-    # secondSectionLength = len(secondSection);
-    # thirdSection = detectSection(lines, secondSectionLength + firstSectionLength + 1)
-    # print "Test cases: "
-    # for i in thirdSection:
-    #      print i,
 
     # Extract ids, x and y coords. Use these info to make an array of nodes.
     infos = getVerticesInfo(firstSection)
@@ -81,10 +79,15 @@ def readTextFile():
     else:
         print "The graph is acyclic."
 
-    source = 0
+    # Input desired starting vertex and destination here
+    # source = 87536
+    # destination = 87546
+    source = 4
     destination = 3
+
     if source == destination:
-        print "Invalid input."
+        print "You are already there! The source is your destination. Shortest path distance is zero."
+        quit()
     if source > vAnde[0]:
         print "Source too big."
     if destination > vAnde[0]:
@@ -214,7 +217,7 @@ def DAGrelax(graph, u, v):
 
 # Function to find the weight of the edges, given the x and y coordinates
 def weightsFromCoords(node1, node2):
-    weight = math.sqrt((node2.x - node1.x)**2 + (node2.y - node1.y)**2)
+    weight = math.sqrt((node1.x - node2.x)**2 + (node1.y - node2.y)**2)
     return weight
 
 #Helper functions to determine the left and right child of a node, used in minHeapify.
@@ -261,7 +264,7 @@ def extractMin(A):
     minHeapify(A, 1)
     return minValue
 
-def Dijkstra(graph, s):
+def Dijkstra(graph, s, d):
     initSingleSource(graph, s)
     S = []
     Q = copy.copy(graph.nodes)
@@ -272,6 +275,8 @@ def Dijkstra(graph, s):
     while len(Q)>1:
         u = extractMin(Q)
         S.append(u)
+        if d == u:  #first optimization on Dijkstra: as soon as the destnation is reached, return.
+            return;
         for v in u.neighbors:
             DijkstraRelax(u, graph.nodes[v])
 
@@ -282,34 +287,59 @@ def DijkstraRelax(u, v):
 
 #Call DAG if the graph is acyclic, Dijkstra otherwise
 def findShortestPath(cycle, graph, source, destination):
+    #start the running timer
+    start = timeit.default_timer()
     print "The source vertex is: ", source
     print "The destination vertex is: ", destination
     if cycle == True:
-        Dijkstra(graph, source)
+        Dijkstra(graph, source, destination)
     else:
         shortestPathDAG(graph, source)
-
-    pid = destination
-    distance = 0
     path = []
     path.append(destination)
-    while pid:
-        if graph.nodes[pid].pi == None:
-            break
-        #print "The parent of ", pid, " is ", graph.nodes[pid].pi, ". The distance to parent is ", round(graph.nodes[pid].d, 2)
-        distance = distance + graph.nodes[pid].d
-        pid = graph.nodes[pid].pi
-        path.append(pid)
-
-    if len(path) == 1:
+    distance = graph.nodes[destination].d
+    while graph.nodes[destination].pi != None:
+        destination = graph.nodes[destination].pi
+        path.append(destination)
+    if distance == float("inf"):
         print "Destination ", destination, " is not reachable by source ", source
     else:
         print "The total distance of the shortest path is: ", round(distance, 2)
-        print "The sequence of vertices that form the shortest path is: ", list(reversed(path))
+        shortestPath = list(reversed(path))
+        print "The sequence of vertices that form the shortest path is: ", shortestPath
+        end = timeit.default_timer()    #ends the timer
+        print "Run time: ", round((end - start), 8)   #prints time in seconds
+        plotPath(graph, shortestPath)
+
+# function to plot the shortest path, as requested in part d.
+def plotPath(g, path):
+    xcoords = []
+    ycoords = []
+    dist = []
+    length = len(path)
+    for element in path:
+        xcoords.append(g.nodes[element].x)
+        ycoords.append(g.nodes[element].y)
+        dist.append(g.nodes[element].d)
+    for i in range (length-1):
+        dist[i] = dist[i+1] - dist[i]
+    plt.plot(xcoords, ycoords)
+    plt.xlabel('x')
+    plt.ylabel('y')
+    for i in range(length - 1):
+        plt.text((xcoords[i] + xcoords[i+1])/2,((ycoords[i]+ycoords[i+1])/2), round(dist[i], 2))
+    for element in path:
+        plt.text(g.nodes[element].x, g.nodes[element].y, element)
+    # range of the picture migh need to be adjusted depending on locations of test vertices.
+    # this settings work fine with the small test
+    p.axis([min(xcoords) - 50 ,max(xcoords) + 50, min(ycoords) - 50,max(ycoords) + 50])
+    ax = p.gca()
+    ax.set_autoscale_on(False)
+    plt.show()
 
 def main():
     readTextFile()
-
+#insert source and destination verices on line 78
 
 if __name__ == "__main__":
     main()
