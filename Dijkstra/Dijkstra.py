@@ -1,6 +1,14 @@
 '''
 Carlo Scanelli
 CSCI 3104 - Assignment 7
+Important notes:
+    - Whatever test file you want to run needs to have a format identical to the bigTest.txt file.
+      That is, the first line of the .txt file represents the number of vertices and edges.
+      Then there is a blank line which separates from the locations of the vertices.
+      After that, there needs to be another blank line followed by the section with the connections.
+    - Insert name of file that you want to use on line 43.
+    - Insert desired source and destination vertices on line 91/92.
+    - Collaborated with Nicholas Johnston
 '''
 import math
 from collections import defaultdict
@@ -11,6 +19,7 @@ import timeit
 import matplotlib.pyplot as plt
 import pylab as p
 import numpy as np
+import matplotlib.patches as mpatches
 
 class Node:
     def __init__(self):
@@ -75,11 +84,10 @@ def readTextFile():
     # determine if the graph is acyclic
     cycle = findCycle(graph)
     if cycle == True:
-        print "The graph is cyclic."
+        print "The graph is cyclic. Running Dijkstra."
     else:
-        print "The graph is acyclic."
+        print "The graph is acyclic. Running DAG."
 
-    # Input desired starting vertex and destination here
     # source = 87536
     # destination = 87546
     source = 4
@@ -275,8 +283,6 @@ def Dijkstra(graph, s, d):
     while len(Q)>1:
         u = extractMin(Q)
         S.append(u)
-        if d == u:  #first optimization on Dijkstra: as soon as the destnation is reached, return.
-            return;
         for v in u.neighbors:
             DijkstraRelax(u, graph.nodes[v])
 
@@ -326,20 +332,114 @@ def plotPath(g, path):
     plt.plot(xcoords, ycoords)
     plt.xlabel('x')
     plt.ylabel('y')
+    plt.title('Shortest path')
     for i in range(length - 1):
         plt.text((xcoords[i] + xcoords[i+1])/2,((ycoords[i]+ycoords[i+1])/2), round(dist[i], 2))
     for element in path:
         plt.text(g.nodes[element].x, g.nodes[element].y, element)
-    # range of the picture migh need to be adjusted depending on locations of test vertices.
-    # this settings work fine with the small test
+    # range of the picture might need to be adjusted depending on locations of test vertices.
+    # these settings work fine with the small test
     p.axis([min(xcoords) - 50 ,max(xcoords) + 50, min(ycoords) - 50,max(ycoords) + 50])
     ax = p.gca()
     ax.set_autoscale_on(False)
     plt.show()
 
+# function to generate random graphs, to make sure alorithms run efficiently.
+def generateRandomGraphs(vertices, edges):
+    newGraph = Graph()
+    for i in range(0, vertices):
+        newNode = Node()
+        newNode.id = i
+        newNode.x = np.random.randint(0,vertices*100)
+        newNode.y = np.random.randint(0,vertices*100)
+        newGraph.nodes.insert(i,newNode)
+    for i in range(0, edges):
+        randomSource = np.random.randint(0,vertices)
+        randomTarget = np.random.randint(0,vertices)
+        while randomTarget == randomSource:
+            randomTarget = np.random.randint(0,vertices)
+        newGraph.nodes[randomSource].neighbors.append(randomTarget)
+    return newGraph
+
+
+dijkstraData = []
+dagData = []
+logData =[]
+vpeData = []
+linData = []
+
+# function to generate rando acyclic graphs, needed to run DAG, and check it runs efficiently.
+def generateRandomAcyclicGraphs(vertices, edges):
+    newGraph = Graph()
+    for i in range(0, vertices):
+        newNode = Node()
+        newNode.id = i
+        newNode.x = np.random.randint(0,vertices*100)
+        newNode.y = np.random.randint(0,vertices*100)
+        newGraph.nodes.insert(i,newNode)
+    while (findCycle(newGraph)):
+        for each in newGraph.nodes:
+            each.neighbors = []
+        for i in range(0, edges):
+            randomSource = np.random.randint(0,vertices)
+            randomTarget = np.random.randint(0,vertices)
+            while randomTarget == randomSource:
+                randomTarget = np.random.randint(0,vertices)
+            newGraph.nodes[randomSource].neighbors.append(randomTarget)
+    return newGraph
+
+'''
+    Note: in case of running time issues/crashses, increase the interval in which the graphs
+    are generated (last parameter in the following two for loops). The smaller the interval the
+    more data points will be generated.
+'''
+
+for i in range(10,1000,1):
+    cyclicGraph = generateRandomGraphs(i,i*2)
+    acyclicGraph = generateRandomAcyclicGraphs(i,i*2)
+    vPlusE = i+i*2
+    start = timeit.default_timer()
+    shortestPathDAG(acyclicGraph, 0)
+    end = timeit.default_timer()
+    elapsedTime = end - start
+    dagData.append((vPlusE, elapsedTime))
+    start = timeit.default_timer()
+    Dijkstra(cyclicGraph, 0, None)
+    end = timeit.default_timer()
+    elapsedTime = end - start
+    dijkstraData.append((vPlusE,elapsedTime))
+    vpeData.append(vPlusE)
+
+# Running time of Dijkstra is O((V+E)*log(V)).
+# Running time of DAG is O(V+E)
+for i in range(10,1000,1):
+    vpe = i+i*2 #assuming number of edges is double the number of vertices
+    logData.append(vpe*math.log(i)*2**-21)  #offset -21 to adjust in the plot
+    linData.append(vpe*2**-20)
+
+# Plot the runtimes of Dijkstra measured experimentally compared to its Big-OH estimate.
+# As can be seen from the generated plots, the algorithm runs efficiently.
+if len(dagData) > 0 and len(dijkstraData) > 0:
+	plt.plot([i[0] for i in dagData],[i[1] for i in dagData], 'bs',[i[0] for i in dijkstraData],[i[1] for i in dijkstraData], 'g^', vpeData,logData,'rs', vpeData,linData,'r--')
+elif len(dijkstraData) > 0:
+	plt.plot([i[0] for i in dijkstraData],[i[1] for i in dijkstraData], 'g^', vpeData,logData,'rs', vpeData,linData,'r--')
+elif len(dagData) > 0:
+	plt.plot([i[0] for i in dagData],[i[1] for i in dagData], 'bs', vpeData,logData,'rs', vpeData,linData,'r--')
+
+plt.title('Comparison to big Oh estimates.')
+'''
+    The red line is the big-Oh estimate of Dijkstra.
+    The green diamonds data points are the experimentally measured running times of Dijkstra.
+    The dashed red lne is the big-Oh estimate of DAG (O(V+E)).
+    The blue squares represent the measured runtimes of DAG.
+'''
+
+
+plt.show()
+
 def main():
     readTextFile()
-#insert source and destination verices on line 78
+#insert source and destination verices on line 91
 
 if __name__ == "__main__":
     main()
